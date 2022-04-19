@@ -1,6 +1,6 @@
 using System;
 
-namespace Game_Question_Backend
+namespace QuestionGame
 {
     public class WeatherForecast
     {
