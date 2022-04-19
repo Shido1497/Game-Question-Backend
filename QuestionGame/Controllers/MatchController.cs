@@ -20,7 +20,7 @@ namespace QuestionGame.Controllers
         private readonly IRepository<Category> _categoryRepository;
         private readonly IRepository<Option> _optionRepository;
 
-        const string matchNoExits = "No existe una partida";
+        const string matchNoExits = "No existe la partida";
 
         public MatchController(IRepository<Match> respository,
             IRepository<Category> categoryRepository,
@@ -32,7 +32,7 @@ namespace QuestionGame.Controllers
             _optionRepository = optionRepository;
         }
 
-        [HttpPost("CreateMatchAsync")]
+        [HttpPost("CreateMatch")]
         public async Task<int> CreateMatchAsync( CreateMatchDto input)
         {
 
@@ -40,32 +40,6 @@ namespace QuestionGame.Controllers
             return level.Id;
         }
 
-
-        [HttpGet("GetMatch")]
-        public async Task<IEnumerable<MatchDto>> GetMatch(int id)
-        {
-            List<string> includes = new List<string>();
-            includes.Add("Rounds");
-            var Matches = await _respository.GetAsync(x => x.PlayerId == id, includes);
-            var MatchesDtos = new List<MatchDto>();
-
-            foreach (var match in Matches)
-            {
-                var rount = match.Rounds.Count();
-                var lastRound = match.Rounds.Last();
-
-                await CheckMatchStatus(match, rount, lastRound);
-
-                MatchesDtos.Add(new MatchDto 
-                { 
-                    TotalPoints = match.TotalPoints,
-                    Round = rount,
-                    PlayerId = match.PlayerId, 
-                    CompleteGame = match.CompleteGame,
-                    Status = lastRound.Status.GetStatusDescription() });
-            }
-            return MatchesDtos;
-        }
 
         [HttpGet("GetMyMatchesScore")]
         public async Task<MatchDto> GetMyMatchIfo(int id)
@@ -85,18 +59,7 @@ namespace QuestionGame.Controllers
             };
         }
 
-        private async Task CheckMatchStatus(Match match, int rount, Round lastRound)
-        {
-            if (!match.CompleteGame && rount < 5)
-            {
-                lastRound.Status = Models.Enum.Status.Lose;
-                match.TotalPoints = 0;
-
-                await _respository.UpdateAsync(match);
-            }
-        }
-
-        [HttpPost("SendRetireAsync")]
+        [HttpPost("SendRetire")]
         public async Task<SendRetireResponseDto> SendRetireAsync(SendRetireDto input)
         {
             SendRetireResponseDto response = new SendRetireResponseDto();
@@ -131,7 +94,7 @@ namespace QuestionGame.Controllers
         }
 
 
-        [HttpPost("StartNewRoundAsync")]
+        [HttpPost("StartNewRound")]
         public async Task<StartRoundResponseDto> StartNewRoundAsync(StartRoundDto input)
         {
             StartRoundResponseDto response = new StartRoundResponseDto();
@@ -149,7 +112,7 @@ namespace QuestionGame.Controllers
                     response.MatchId = match.Id;
 
                     await CreateNewRound(match, input, response);
-                    await SetRoundQuestion(response); 
+                    await SetRoundQuestion(res ponse); 
                 }
                 else
                 {
@@ -165,13 +128,14 @@ namespace QuestionGame.Controllers
             return response;
         }
 
-        private async Task SetRoundQuestion(StartRoundResponseDto response)
+        private async Task <StartRoundResponseDto> SetRoundQuestion(int currentRound)
         {
+            var response = new StartRoundResponseDto();
             List<string> includes = new List<string>();
             includes.Add(nameof(Level));
             includes.Add("Questions");
 
-            var categories = await _categoryRepository.GetAsync(x => x.Level.Difficulty == response.CurrentRound, includes);
+            var categories = await _categoryRepository.GetAsync(x => x.Level.Difficulty == currentRound, includes);
             var rand = new System.Random();
             var category = categories.Skip(rand.Next(categories.Count())).FirstOrDefault();
 
@@ -194,7 +158,7 @@ namespace QuestionGame.Controllers
             {
                 response.questionDto.Options.Add(new OptionsDto { Description = option.Description, Id = option.Id });
             }
-
+            return response;
         }
 
         private async Task CreateNewRound(Match match, StartRoundDto input, StartRoundResponseDto response)
@@ -232,16 +196,18 @@ namespace QuestionGame.Controllers
             response.CurrentRound = currentRound.CurrentRound;
         }
 
-        [HttpPost("SendMatchRoundAnswerAsync")]
-        public async Task<SendMatchRoundAnswerResponseDto> SendMatchRoundAnswerAsync(SendMatchRoundAnswerDto input)
+        [HttpPost("SendQuestionAnswer")]
+        public async Task<SendAnswerResponseDto> SendQuestionAnswerAsync(SendAnswerDto input)
         {
-            var result = new SendMatchRoundAnswerResponseDto();
-            var option = (await _optionRepository.GetAsync(x => x.Id == input.OptionId)).FirstOrDefault();
+            var result = new SendAnswerResponseDto();
+            List<string> includes = new List<string>();
+            includes.Add(nameof(Question));
+            var option = (await _optionRepository.GetAsync(x => x.Id == input.OptionId,includes)).FirstOrDefault();
 
             result.Status = option.Correct ? Models.Enum.Status.Winner : Models.Enum.Status.Lose;
 
 
-            List<string> includes = new List<string>();
+            includes = new List<string>();
             includes.Add("Rounds");
             var matches = await _respository.GetAsync(x => x.Id == input.MatchId, includes);
 
@@ -253,7 +219,7 @@ namespace QuestionGame.Controllers
 
                 includes = new List<string>();
                 includes.Add(nameof(Level));
-                var category = (await _categoryRepository.GetAsync(x => x.Id == input.CategoryId, includes)).FirstOrDefault();
+                var category = (await _categoryRepository.GetAsync(x => x.Id == option.Question.CategoryId, includes)).FirstOrDefault();
 
                 currentRount.OptionId = input.OptionId;
                 currentRount.Status = result.Status;

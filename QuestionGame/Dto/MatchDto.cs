@@ -23,12 +23,12 @@ namespace QuestionGame.Dto
         public bool CompleteGame { get; set; }
     }
 
-    public class SendMatchRoundAnswerDto
+    public class SendAnswerDto
     {
         public int MatchId { get; set; }
         public int OptionId { get; set; }
         public int RoundId { get; set; }
-        public int CategoryId { get; set; }
+       
     }
 
     public class StartRoundDto
@@ -52,7 +52,7 @@ namespace QuestionGame.Dto
         public double TotalPoints { get; set; }
     }
 
-    public class SendMatchRoundAnswerResponseDto: RoundResponseBase
+    public class SendAnswerResponseDto: RoundResponseBase
     {
 
     }
