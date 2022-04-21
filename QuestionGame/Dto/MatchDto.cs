@@ -28,7 +28,6 @@ namespace QuestionGame.Dto
         public int MatchId { get; set; }
         public int OptionId { get; set; }
         public int RoundId { get; set; }
-       
     }
 
     public class StartRoundDto
@@ -52,7 +51,7 @@ namespace QuestionGame.Dto
         public double TotalPoints { get; set; }
     }
 
-    public class SendAnswerResponseDto: RoundResponseBase
+    public class SendAnswerResponseDto : RoundResponseBase
     {
 
     }

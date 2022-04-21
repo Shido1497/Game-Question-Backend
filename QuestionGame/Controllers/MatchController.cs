@@ -20,7 +20,7 @@ namespace QuestionGame.Controllers
         private readonly IRepository<Category> _categoryRepository;
         private readonly IRepository<Option> _optionRepository;
 
-        const string matchNoExits = "No existe la partida";
+        const string matchNoExits = "No existe una partida";
 
         public MatchController(IRepository<Match> respository,
             IRepository<Category> categoryRepository,
@@ -41,6 +41,32 @@ namespace QuestionGame.Controllers
         }
 
 
+        [HttpGet("GetMatch")]
+        public async Task<IEnumerable<MatchDto>> GetMatch(int id)
+        {
+            List<string> includes = new List<string>();
+            includes.Add("Rounds");
+            var Matches = await _respository.GetAsync(x => x.PlayerId == id, includes);
+            var MatchesDtos = new List<MatchDto>();
+
+            foreach (var match in Matches)
+            {
+                var rount = match.Rounds.Count();
+                var lastRound = match.Rounds.Last();
+
+                await CheckMatchStatus(match, rount, lastRound);
+
+                MatchesDtos.Add(new MatchDto 
+                { 
+                    TotalPoints = match.TotalPoints,
+                    Round = rount,
+                    PlayerId = match.PlayerId, 
+                    CompleteGame = match.CompleteGame,
+                    Status = lastRound.Status.GetStatusDescription() });
+            }
+            return MatchesDtos;
+        }
+
         [HttpGet("GetMyMatchesScore")]
         public async Task<MatchDto> GetMyMatchIfo(int id)
         {
@@ -57,6 +83,17 @@ namespace QuestionGame.Controllers
                 PlayerId = match.PlayerId,
                 Status = lastRound!= null ? lastRound.Status.GetStatusDescription(): Status.Create.GetStatusDescription()
             };
+        }
+
+        private async Task CheckMatchStatus(Match match, int rount, Round lastRound)
+        {
+            if (!match.CompleteGame && rount < 5)
+            {
+                lastRound.Status = Models.Enum.Status.Lose;
+                match.TotalPoints = 0;
+
+                await _respository.UpdateAsync(match);
+            }
         }
 
         [HttpPost("SendRetire")]
@@ -113,7 +150,6 @@ namespace QuestionGame.Controllers
 
                     await CreateNewRound(match, input, response);
                     response.questionDto = await SetRoundQuestion(response.CurrentRound);
-                    
                 }
                 else
                 {
@@ -129,7 +165,7 @@ namespace QuestionGame.Controllers
             return response;
         }
 
-        private async Task <QuestionDto> SetRoundQuestion(int currentRound)
+        private async Task<QuestionDto> SetRoundQuestion(int currentRound)
         {
             var response = new QuestionDto();
             List<string> includes = new List<string>();
@@ -197,13 +233,13 @@ namespace QuestionGame.Controllers
             response.CurrentRound = currentRound.CurrentRound;
         }
 
-        [HttpPost("SendQuestionAnswer")]
-        public async Task<SendAnswerResponseDto> SendQuestionAnswerAsync(SendAnswerDto input)
+        [HttpPost("SendMatchRoundAnswer")]
+        public async Task<SendAnswerResponseDto > SendMatchRoundAnswerAsync(SendAnswerDto input)
         {
             var result = new SendAnswerResponseDto();
             List<string> includes = new List<string>();
             includes.Add(nameof(Question));
-            var option = (await _optionRepository.GetAsync(x => x.Id == input.OptionId,includes)).FirstOrDefault();
+            var option = (await _optionRepository.GetAsync(x => x.Id == input.OptionId, includes)).FirstOrDefault();
 
             result.Status = option.Correct ? Models.Enum.Status.Winner : Models.Enum.Status.Lose;
 
