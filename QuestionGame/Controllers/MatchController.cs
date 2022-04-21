@@ -112,7 +112,8 @@ namespace QuestionGame.Controllers
                     response.MatchId = match.Id;
 
                     await CreateNewRound(match, input, response);
-                    await SetRoundQuestion(res ponse); 
+                    response.questionDto = await SetRoundQuestion(response.CurrentRound);
+                    
                 }
                 else
                 {
@@ -128,9 +129,9 @@ namespace QuestionGame.Controllers
             return response;
         }
 
-        private async Task <StartRoundResponseDto> SetRoundQuestion(int currentRound)
+        private async Task <QuestionDto> SetRoundQuestion(int currentRound)
         {
-            var response = new StartRoundResponseDto();
+            var response = new QuestionDto();
             List<string> includes = new List<string>();
             includes.Add(nameof(Level));
             includes.Add("Questions");
@@ -146,7 +147,7 @@ namespace QuestionGame.Controllers
             var rnd = new Random();
             var randomized = options.OrderBy(item => rnd.Next());
 
-            response.questionDto = new QuestionDto()
+            response = new QuestionDto()
             {
                 CategoryId = category.Id,
                 CategoryName = category.Name,
@@ -156,7 +157,7 @@ namespace QuestionGame.Controllers
 
             foreach (var option in options)
             {
-                response.questionDto.Options.Add(new OptionsDto { Description = option.Description, Id = option.Id });
+                response.Options.Add(new OptionsDto { Description = option.Description, Id = option.Id });
             }
             return response;
         }
